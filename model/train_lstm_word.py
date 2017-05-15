@@ -134,7 +134,7 @@ def main(_):
     raise ValueError("Must set --data_path to PTB data directory")
 
   raw_data = reader.ptb_raw_data(FLAGS.data_path)
-  train_data, valid_data, test_data, _, _ = raw_data
+  train_data, valid_data, test_data, _, _, _ = raw_data
 
   train_config = get_config(True)
   valid_config = get_config(True)
@@ -150,9 +150,9 @@ def main(_):
           train_data, train_config.batch_size, train_config.num_steps, name="TrainInput")
 
       with tf.variable_scope("Model", reuse=None, initializer=initializer):
-        m = LSTMWordModel(is_training=True, config=train_config, 
-                          input_data=train_input_data,
-                          targets=train_targets)
+        m = LSTMWordModel(is_training=True, config=train_config)
+        m.build_graph(train_input_data, train_targets)
+      
       tf.summary.scalar("Training Loss", m.cost)
       tf.summary.scalar("Learning Rate", m.lr)
 
@@ -163,9 +163,9 @@ def main(_):
           name="ValidInput")
 
       with tf.variable_scope("Model", reuse=True, initializer=initializer):
-        mvalid = LSTMWordModel(is_training=False, config=valid_config, 
-                               input_data=valid_input_data,
-                               targets=valid_targets)
+        mvalid = LSTMWordModel(is_training=False, config=valid_config)
+        mvalid.build_graph(valid_input_data, valid_targets)
+
       tf.summary.scalar("Validation Loss", mvalid.cost)
 
     with tf.name_scope("Test"):
@@ -175,9 +175,8 @@ def main(_):
           name="ValidInput")
 
       with tf.variable_scope("Model", reuse=True, initializer=initializer):
-        mtest = LSTMWordModel(is_training=False, config=inference_config,
-                              input_data=test_input_data,
-                              targets=test_targets)
+        mtest = LSTMWordModel(is_training=False, config=inference_config)
+        mtest.build_graph(test_input_data, test_targets)
 
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)
     with sv.managed_session() as session:
